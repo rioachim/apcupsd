@@ -32,7 +32,7 @@
  * The following is a work around for a problem in 2.6 kernel
  *  linux/hiddev.h file that is fixed in 2.6.9
  */
-#define HID_MAX_USAGES 1024
+#define HID_MAX_USAGES 2048
 
 #include "apc.h"
 #include "linux-usb.h"
@@ -514,7 +514,7 @@ bool LinuxUsbUpsDriver::check_state()
 
       FD_ZERO(&rfds);
       FD_SET(_fd, &rfds);
-
+      sleep(1);
       retval = select(_fd + 1, &rfds, NULL, NULL, &tv);
 
       /*
