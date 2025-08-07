@@ -37,12 +37,10 @@
  * instead, just for fun. We detect and work around the breakage.
  */
 #define QUIRK_OLD_BACKUPS_PRO_MODEL_STRING "BackUPS Pro 500 FW:16.3.D USB FW:4"
-#define QUIRK_NEW_BACKUPS_MODEL_STRING "Back-UPS BX1600MI"
 
 UsbUpsDriver::UsbUpsDriver(UPSINFO *ups) :
    UpsDriver(ups),
    _quirk_old_backups_pro(false),
-   _quirk_new_backups(false),
    _prev_time((struct timeval){0}),
    _bpcnt(0),
    _bacnt(0),
@@ -273,16 +271,6 @@ bool UsbUpsDriver::get_capabilities()
       if (!strcmp(uval.sValue, QUIRK_OLD_BACKUPS_PRO_MODEL_STRING)) {
          _quirk_old_backups_pro = true;
          Dmsg(100, "BackUPS Pro quirk enabled\n");
-      }
-   }
-   
-   /* Detect broken new BackUPS model */
-   _quirk_new_backups = false;
-   if (_ups->UPS_Cap[CI_UPSMODEL] && usb_get_value(CI_UPSMODEL, &uval)) {
-      Dmsg(250, "Checking for new BackUPS quirk \"%s\"\n", uval.sValue);
-      if (!strcmp(uval.sValue, QUIRK_NEW_BACKUPS_MODEL_STRING)) {
-         _quirk_new_backups = true;
-         Dmsg(100, "new BackUPS quirk enabled\n");
       }
    }
 
