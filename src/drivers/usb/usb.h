@@ -84,8 +84,11 @@ protected:
    virtual bool pusb_get_value(int ci, USB_VALUE *uval) = 0;
 
    bool _quirk_old_backups_pro;
+   bool _quirk_new_backups;   
    struct timeval _prev_time;
    int _bpcnt;
+   int _bacnt;
+   int _brcnt;   
 };
 
 /* Max rate to update volatile data */

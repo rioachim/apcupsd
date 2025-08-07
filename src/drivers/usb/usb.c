@@ -37,12 +37,16 @@
  * instead, just for fun. We detect and work around the breakage.
  */
 #define QUIRK_OLD_BACKUPS_PRO_MODEL_STRING "BackUPS Pro 500 FW:16.3.D USB FW:4"
+#define QUIRK_NEW_BACKUPS_MODEL_STRING "Back-UPS BX1600MI"
 
 UsbUpsDriver::UsbUpsDriver(UPSINFO *ups) :
    UpsDriver(ups),
    _quirk_old_backups_pro(false),
+   _quirk_new_backups(false),
    _prev_time((struct timeval){0}),
-   _bpcnt(0)
+   _bpcnt(0),
+   _bacnt(0),
+   _brcnt(0)   
 {
 }
 
@@ -207,7 +211,7 @@ const UsbUpsDriver::s_known_info UsbUpsDriver::_known_info[] = {
 
 
 /* Fetch the given CI from the UPS */
-#define URB_DELAY_MS 20
+#define URB_DELAY_MS 120
 bool UsbUpsDriver::usb_get_value(int ci, USB_VALUE *uval)
 {
    struct timeval now;
@@ -269,6 +273,16 @@ bool UsbUpsDriver::get_capabilities()
       if (!strcmp(uval.sValue, QUIRK_OLD_BACKUPS_PRO_MODEL_STRING)) {
          _quirk_old_backups_pro = true;
          Dmsg(100, "BackUPS Pro quirk enabled\n");
+      }
+   }
+   
+   /* Detect broken new BackUPS model */
+   _quirk_new_backups = false;
+   if (_ups->UPS_Cap[CI_UPSMODEL] && usb_get_value(CI_UPSMODEL, &uval)) {
+      Dmsg(250, "Checking for new BackUPS quirk \"%s\"\n", uval.sValue);
+      if (!strcmp(uval.sValue, QUIRK_NEW_BACKUPS_MODEL_STRING)) {
+         _quirk_new_backups = true;
+         Dmsg(100, "new BackUPS quirk enabled\n");
       }
    }
 
@@ -410,8 +424,13 @@ void UsbUpsDriver::usb_process_value(int ci, USB_VALUE* uval)
       break;
 
    case CI_NeedReplacement:
-      if (uval->iValue)
-         _ups->set_replacebatt(uval->iValue);
+      if (uval->iValue) {
+         if (_brcnt++) {
+            _ups->set_replacebatt(uval->iValue);
+         }
+      } else {
+         _brcnt = 0;
+      }
       Dmsg(200, "ReplaceBatt=%d\n", uval->iValue);
       break;
 
@@ -569,11 +588,15 @@ void UsbUpsDriver::usb_process_value(int ci, USB_VALUE* uval)
        * delayed. C'est la vie.
        */
       if (uval->iValue) {
-         if (_bpcnt++)
+         if (_bpcnt++) {
+            _bacnt = 0;
             _ups->set_battpresent();
+         }
       } else {
-         _bpcnt = 0;
-         _ups->clear_battpresent();
+         if (_bacnt++) {
+            _bpcnt = 0;
+            _ups->clear_battpresent();
+         }
       }
       Dmsg(200, "BatteryPresent=%d\n", uval->iValue);
       break;
